@@ -29,7 +29,11 @@ around if(feed_rate<minimumfeedrate) this only should be done if it is not a pur
 ~331: great, The Z_M_PIN checks are in :)
 
 *temperature.cpp
-
+done: enum for heater, bed,
+manage_heater() is seriously different.
+  done: if tem_meas_ready ==true->!true+return?
+done #define K1 0.95 maybe in the configuration.h?
+semi-done: PID-C checking needed. Untested but added.
 ----
 
 still needed to finish the merge, before testin!

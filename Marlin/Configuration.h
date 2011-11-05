@@ -155,35 +155,41 @@ const int dropsegments=5; //everything with this number of steps  will be ignore
 
 
 
-/// PID settings:
-// Uncomment the following line to enable PID support.
-//#define SMOOTHING
-//#define SMOOTHFACTOR 5.0
-//float current_raw_average=0;
+
 
 #define PIDTEMP
 #ifdef PIDTEMP
-//#define PID_DEBUG // Sends debug data to the serial port. 
-//#define PID_OPENLOOP 1 // Puts PID in open loop. M104 sets the output power in %
-#define PID_MAX 255 // limits current to nozzle
-#define PID_INTEGRAL_DRIVE_MAX 255
+  /// PID settings:
+  // Uncomment the following line to enable PID support.
+  //#define SMOOTHING
+  //#define SMOOTHFACTOR 5.0
+  //float current_raw_average=0;
+  #define K1 0.95 //smoothing of the PID
+  //#define PID_DEBUG // Sends debug data to the serial port. 
+  //#define PID_OPENLOOP 1 // Puts PID in open loop. M104 sets the output power in %
+  #define PID_MAX 255 // limits current to nozzle
+  #define PID_INTEGRAL_DRIVE_MAX 255
   #define PID_dT 0.05
  //machine with red silicon: 1950:45 second ; with fan fully blowin 3000:47
 
   #define PID_CRITIAL_GAIN 3000
   #define PID_SWING_AT_CRITIAL 45 //seconds
   #define PIDIADD 5
-/*
+  /*
   //PID according to Ziegler-Nichols method
   float Kp = 0.6*PID_CRITIAL_GAIN; 
   float Ki =PIDIADD+2*Kp/PID_SWING_AT_CRITIAL*PID_dT;  
   float Kd = Kp*PID_SWING_AT_CRITIAL/8./PID_dT;  
-*/
+  */
   //PI according to Ziegler-Nichols method
   #define  DEFAULT_Kp (PID_CRITIAL_GAIN/2.2) 
   #define  DEFAULT_Ki (1.2*Kp/PID_SWING_AT_CRITIAL*PID_dT)
   #define  DEFAULT_Kd (0)
-  #define  DEFAULT_Kc (9) //heatingpower=Kc*(e_speed)
+  
+  #define PID_ADD_EXTRUSION_RATE  
+  #ifdef PID_ADD_EXTRUSION_RATE
+    #define  DEFAULT_Kc (5) //heatingpower=Kc*(e_speed)
+  #endif
 #endif // PIDTEMP
 
 // extruder advance constant (s2/mm3)
@@ -213,8 +219,5 @@ const int dropsegments=5; //everything with this number of steps  will be ignore
   #define BLOCK_BUFFER_SIZE 16 // maximize block buffer
 #endif
 
-#ifdef SIMPLE_LCD
-  #define BLOCK_BUFFER_SIZE 16 // A little less buffer for just a simple LCD
-#endif
 
 #endif

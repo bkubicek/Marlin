@@ -768,28 +768,28 @@ inline void process_commands()
 				break;
 #endif //SDSUPPORT
       case 104: // M104
-                if (code_seen('S')) target_raw[0] = temp2analog(code_value());
+                if (code_seen('S')) target_raw[TEMPSENSOR_HOTEND] = temp2analog(code_value());
 #ifdef PIDTEMP
                 pid_setpoint = code_value();
 #endif //PIDTEM
         #ifdef WATCHPERIOD
-            if(target_raw[0] > current_raw[0]){
+            if(target_raw[TEMPSENSOR_HOTEND] > current_raw[TEMPSENSOR_HOTEND]){
                 watchmillis = max(1,millis());
-                watch_raw[0] = current_raw[0];
+                watch_raw[TEMPSENSOR_HOTEND] = current_raw[TEMPSENSOR_HOTEND];
             }else{
                 watchmillis = 0;
             }
         #endif
         break;
       case 140: // M140 set bed temp
-                if (code_seen('S')) target_raw[1] = temp2analogBed(code_value());
+                if (code_seen('S')) target_raw[TEMPSENSOR_BED] = temp2analogBed(code_value());
         break;
       case 105: // M105
         #if (TEMP_0_PIN > -1) || defined (HEATER_USES_AD595)
-                tt = analog2temp(current_raw[0]);
+                tt = analog2temp(current_raw[TEMPSENSOR_HOTEND]);
         #endif
         #if TEMP_1_PIN > -1
-                bt = analog2tempBed(current_raw[1]);
+                bt = analog2tempBed(current_raw[]);
         #endif
         #if (TEMP_0_PIN > -1) || defined (HEATER_USES_AD595)
             Serial.print("ok T:");
@@ -817,24 +817,24 @@ inline void process_commands()
         //break;
       case 109: // M109 - Wait for extruder heater to reach target.
         LCD_MESSAGE("Heating...");
-               if (code_seen('S')) target_raw[0] = temp2analog(code_value());
+               if (code_seen('S')) target_raw[TEMPSENSOR_HOTEND] = temp2analog(code_value());
 #ifdef PIDTEMP
                pid_setpoint = code_value();
 #endif //PIDTEM
         #ifdef WATCHPERIOD
-          if(target_raw[0]>current_raw[0]){
+          if(target_raw[TEMPSENSOR_HOTEND]>current_raw[TEMPSENSOR_HOTEND]){
               watchmillis = max(1,millis());
-              watch_raw[0] = current_raw[0];
+              watch_raw[TEMPSENSOR_HOTEND] = current_raw[TEMPSENSOR_HOTEND];
           }else{
               watchmillis = 0;
           }
         #endif
           codenum = millis(); 
           starttime=millis();
-          while(current_raw[0] < target_raw[0]) {
+          while(current_raw[TEMPSENSOR_HOTEND] < target_raw[TEMPSENSOR_HOTEND]) {
             if( (millis() - codenum) > 1000 ) { //Print Temp Reading every 1 second while heating up.
               Serial.print("T:");
-              Serial.println( analog2temp(current_raw[0]) ); 
+              Serial.println( analog2temp(current_raw[TEMPSENSOR_HOTEND]) ); 
               codenum = millis();
             }
             LCD_STATUS;
@@ -844,19 +844,19 @@ inline void process_commands()
           break;
       case 190: // M190 - Wait bed for heater to reach target.
       #if TEMP_1_PIN > -1
-          if (code_seen('S')) target_raw[1] = temp2analog(code_value());
+          if (code_seen('S')) target_raw[TEMPSENSOR_BED] = temp2analog(code_value());
         codenum = millis(); 
-          while(current_raw[1] < target_raw[1]) 
+          while(current_raw[TEMPSENSOR_BED] < target_raw[TEMPSENSOR_BED]) 
                                 {
           if( (millis()-codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
           {
-            float tt=analog2temp(current_raw[0]);
+            float tt=analog2temp(current_raw[TEMPSENSOR_HOTEND]);
             Serial.print("T:");
             Serial.println( tt );
             Serial.print("ok T:");
             Serial.print( tt ); 
             Serial.print(" B:");
-            Serial.println( analog2temp(current_raw[1]) ); 
+            Serial.println( analog2temp(current_raw[TEMPSENSOR_BED]) ); 
             codenum = millis(); 
           }
             manage_heater();
@@ -1131,15 +1131,15 @@ void wd_reset() {
 inline void kill()
 {
   #if TEMP_0_PIN > -1
-  target_raw[0]=0;
+  target_raw[TEMPSENSOR_HOTEND]=0;
   if(HEATER_0_PIN > -1) digitalWrite(HEATER_0_PIN,LOW);
 #endif
   #if TEMP_1_PIN > -1
-  target_raw[1]=0;
+  target_raw[TEMPSENSOR_BED]=0;
   if(HEATER_1_PIN > -1) digitalWrite(HEATER_1_PIN,LOW);
 #endif
   #if TEMP_2_PIN > -1
-  target_raw[2]=0;
+  target_raw[TEMPSENSOR_AUX]=0;
   
   #endif
   
