@@ -115,7 +115,7 @@ asm volatile ( \
 #define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
 #define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
 
-
+block_t *current_block;  // A pointer to the block currently being traced
 
 // Variables used by The Stepper Driver Interrupt
 static unsigned char out_bits;        // The next stepping-bits to be output
@@ -135,7 +135,6 @@ static long acceleration_time, deceleration_time;
 static unsigned short acc_step_rate; // needed for deccelaration start point
 static char step_loops;
 
-block_t *current_block;  // A pointer to the block currently being traced
 
 //         __________________________
 //        /|                        |\     _________________         ^

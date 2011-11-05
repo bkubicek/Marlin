@@ -51,3 +51,8 @@ remove DEBUG_STEPS?
 
 block_t
 pid_dt ->0.1  whats the changes to the PID, checking needed
+
+
+----
+second merge saturday morning:
+done: PID_dt->0.1

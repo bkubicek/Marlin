@@ -6,19 +6,31 @@
 // BASIC SETTINGS: select your board type, thermistor type, axis scaling, and endstop configuration
 
 //// The following define selects which electronics board you have. Please choose the one that matches your setup
-// Gen6 = 5, 
+// MEGA/RAMPS up to 1.2 = 3,
+// RAMPS 1.3 = 33
+// Gen6 = 5,
+// Sanguinololu 1.2 and above = 62
 // Ultimaker = 7,
 #define MOTHERBOARD 7
 //#define MOTHERBOARD 5
+
 
 //// Thermistor settings:
 // 1 is 100k thermistor
 // 2 is 200k thermistor
 // 3 is mendel-parts thermistor
-#define THERMISTORHEATER 2
-// Select one of these only to define how the nozzle temp is read.
-//#define HEATER_USES_THERMISTOR
-#define HEATER_USES_AD595
+// 4 is 10k thermistor
+// 5 is ParCan supplied 104GT-2 100K
+// 6 is EPCOS 100k
+// 7 is 100k Honeywell thermistor 135-104LAG-J01
+#define THERMISTORHEATER_1 3
+#define THERMISTORHEATER_2 3
+#define THERMISTORBED 3
+
+//#define HEATER_1_USES_THERMISTOR
+//#define HEATER_2_USES_THERMISTOR
+#define HEATER_1_USES_AD595
+//#define HEATER_2_USES_AD595
 
 // Select one of these only to define how the bed temp is read.
 //#define BED_USES_THERMISTOR
@@ -26,8 +38,6 @@
 
 #define HEATER_CHECK_INTERVAL 50
 #define BED_CHECK_INTERVAL 5000
-#define BNUMTEMPS NUMTEMPS
-#define bedtemptable temptable
 
 
 //// Endstop Settings
@@ -37,6 +47,7 @@ const bool ENDSTOPS_INVERTING = true; // set to true to invert the logic of the 
 // For optos H21LOB set to true, for Mendel-Parts newer optos TCST2103 set to false
 
 // This determines the communication speed of the printer
+//#define BAUDRATE 250000
 #define BAUDRATE 115200
 //#define BAUDRATE 230400
 
@@ -51,7 +62,7 @@ const bool ENDSTOPS_INVERTING = true; // set to true to invert the logic of the 
  #define SDSUPPORT
  #define ULTRA_LCD
  #define LCD_WIDTH 20
- #define LCD_HEIGHT 4
+#define LCD_HEIGHT 4
 #else //no panel but just lcd 
   #ifdef ULTRA_LCD
     #define LCD_WIDTH 16
@@ -139,17 +150,26 @@ const int dropsegments=5; //everything with this number of steps  will be ignore
 #define WATCHDOG_TIMEOUT 4
 
 
+
+//// Experimental watchdog and minimal temp
+// The watchdog waits for the watchperiod in milliseconds whenever an M104 or M109 increases the target temperature
 // If the temperature has not increased at the end of that period, the target temperature is set to zero. It can be reset with another M104/M109
 //#define WATCHPERIOD 5000 //5 seconds
 
+// Actual temperature must be close to target for this long before M109 returns success
+//#define TEMP_RESIDENCY_TIME 20  // (seconds)
+//#define TEMP_HYSTERESIS 5       // (C°) range of +/- temperatures considered "close" to the target one
+
 //// The minimal temperature defines the temperature below which the heater will not be enabled
 #define MINTEMP 5
+#define BED_MINTEMP 5
 
 
 // When temperature exceeds max temp, your heater will be switched off.
 // This feature exists to protect your hotend from overheating accidentally, but *NOT* from thermistor short/failure!
 // You should use MINTEMP for thermistor short/failure protection.
 #define MAXTEMP 275
+#define BED_MAXTEMP 150
 
 
 
@@ -164,12 +184,12 @@ const int dropsegments=5; //everything with this number of steps  will be ignore
   //#define SMOOTHING
   //#define SMOOTHFACTOR 5.0
   //float current_raw_average=0;
-  #define K1 0.95 //smoothing of the PID
+    #define K1 0.95 //smoothing of the PID
   //#define PID_DEBUG // Sends debug data to the serial port. 
   //#define PID_OPENLOOP 1 // Puts PID in open loop. M104 sets the output power in %
   #define PID_MAX 255 // limits current to nozzle
   #define PID_INTEGRAL_DRIVE_MAX 255
-  #define PID_dT 0.05
+  #define PID_dT 0.1
  //machine with red silicon: 1950:45 second ; with fan fully blowin 3000:47
 
   #define PID_CRITIAL_GAIN 3000
@@ -204,7 +224,7 @@ const int dropsegments=5; //everything with this number of steps  will be ignore
 #ifdef ADVANCE
 #define EXTRUDER_ADVANCE_K .3
 
-#define D_FILAMENT 2.8
+#define D_FILAMENT 1.7
 #define STEPS_MM_E 65
 #define EXTRUTION_AREA (0.25 * D_FILAMENT * D_FILAMENT * 3.14159)
 #define STEPS_PER_CUBIC_MM_E (axis_steps_per_unit[E_AXIS]/ EXTRUTION_AREA)
@@ -213,7 +233,7 @@ const int dropsegments=5; //everything with this number of steps  will be ignore
 
 // THE BLOCK_BUFFER_SIZE NEEDS TO BE A POWER OF 2, e.g. 8,16,32 
 #if defined SDSUPPORT
-  // The number of linear motions that can be in the plan at any give time.  
+// The number of linear motions that can be in the plan at any give time.  
   #define BLOCK_BUFFER_SIZE 16   // SD,LCD,Buttons take more memory, block buffer needs to be smaller
 #else
   #define BLOCK_BUFFER_SIZE 16 // maximize block buffer

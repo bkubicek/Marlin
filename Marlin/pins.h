@@ -260,6 +260,7 @@
 #define HEATER_2_PIN        -1
 #define TEMP_0_PIN         13   // ANALOG NUMBERING
 #define TEMP_1_PIN         14   // ANALOG NUMBERING
+#define TEMP_2_PIN         -1   // ANALOG NUMBERING
 
 
 #else // RAMPS_V_1_1 or RAMPS_V_1_2 as default
@@ -307,6 +308,7 @@
 #define HEATER_2_PIN        -1
 #define TEMP_0_PIN          2    // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!!
 #define TEMP_1_PIN          1    // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!!
+#define TEMP_2_PIN          -1    // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!!
 #endif
 
 // SPI for Max6675 Thermocouple 
@@ -426,6 +428,7 @@
     #define RX_ENABLE_PIN	13
 
 #endif
+
 /****************************************************************************************
 * Sanguinololu pin assignment
 *
@@ -487,14 +490,10 @@
 
 #define TEMP_0_PIN          7   // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!! (pin 33 extruder)
 #define TEMP_1_PIN          6   // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!! (pin 34 bed)
-#define SDPOWER          -1
-#define SDSS          31
-#define HEATER_2_PIN        -1
-
-
-
-
-
+#define TEMP_2_PIN         -1
+#define SDPOWER            -1
+#define SDSS               31
+#define HEATER_2_PIN       -1
 
 #endif
 
@@ -564,4 +563,8 @@
 #ifndef KNOWN_BOARD
 #error Unknown MOTHERBOARD value in configuration.h
 #endif
+
+//List of pins which to ignore when asked to change by gcode, 0 and 1 are RX and TX, do not mess with those!
+#define SENSITIVE_PINS {0, 1, X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, X_MIN_PIN, X_MAX_PIN, Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, Y_MIN_PIN, Y_MAX_PIN, Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, Z_MIN_PIN, Z_MAX_PIN, E_STEP_PIN, E_DIR_PIN, E_ENABLE_PIN, LED_PIN, PS_ON_PIN, HEATER_0_PIN, HEATER_1_PIN, HEATER_2_PIN, FAN_PIN, TEMP_0_PIN, TEMP_1_PIN, TEMP_2_PIN}
+
 #endif

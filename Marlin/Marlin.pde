@@ -69,7 +69,6 @@ char version_string[] = "1.0.0 Alpha 1";
 // M114 - Display current position
 
 //Custom M Codes
-// M80  - Turn on Power Supply
 // M20  - List SD card
 // M21  - Init SD card
 // M22  - Release SD card
@@ -80,6 +79,8 @@ char version_string[] = "1.0.0 Alpha 1";
 // M27  - Report SD print status
 // M28  - Start SD write (M28 filename.g)
 // M29  - Stop SD write
+// M42  - Change pin status via gcode
+// M80  - Turn on Power Supply
 // M81  - Turn off Power Supply
 // M82  - Set E codes absolute (default)
 // M83  - Set E codes relative while in Absolute Coordinates (G90) mode
@@ -123,6 +124,7 @@ bool relative_mode_e = false;  //Determines Absolute or Relative E Codes while i
 uint8_t fanpwm=0;
 
 volatile int feedmultiply=100; //100->1 200->2
+int saved_feedmultiply;
 volatile bool feedmultiplychanged=false;
 // comm variables
 #define MAX_CMD_SIZE 96
@@ -140,6 +142,8 @@ char *strchr_pointer; // just a pointer to find chars in the cmd string like X, 
 extern float HeaterPower;
 
 #include "EEPROM.h"
+
+const int sensitive_pins[] = SENSITIVE_PINS; // Sensitive pin list for M42
 
 float tt = 0, bt = 0;
 #ifdef WATCHPERIOD
@@ -284,24 +288,24 @@ void checkautostart(bool force)
 		if(!sdactive) //fail
 		return;
 	}
-	static int lastnr=0;
-	char autoname[30];
-	sprintf(autoname,"auto%i.g",lastnr);
-	for(int i=0;i<(int)strlen(autoname);i++)
-		autoname[i]=tolower(autoname[i]);
-	dir_t p;
+        static int lastnr=0;
+        char autoname[30];
+        sprintf(autoname,"auto%i.g",lastnr);
+        for(int i=0;i<(int)strlen(autoname);i++)
+                autoname[i]=tolower(autoname[i]);
+        dir_t p;
 
-	root.rewind();
-	//char filename[11];
-	//int cnt=0;
+        root.rewind();
+        //char filename[11];
+        //int cnt=0;
 
-	bool found=false;
-	while (root.readDir(p) > 0) 
-	{
-		for(int i=0;i<(int)strlen((char*)p.name);i++)
-			p.name[i]=tolower(p.name[i]);
-		//Serial.print((char*)p.name);
-		//Serial.print(" ");
+        bool found=false;
+        while (root.readDir(p) > 0) 
+        {
+                for(int i=0;i<(int)strlen((char*)p.name);i++)
+                        p.name[i]=tolower(p.name[i]);
+                //Serial.print((char*)p.name);
+                //Serial.print(" ");
 		//Serial.println(autoname);
 		if(p.name[9]!='~') //skip safety copies
 		if(strncmp((char*)p.name,autoname,5)==0)
@@ -548,6 +552,9 @@ inline void process_commands()
       break;
     case 28: //G28 Home all Axis one at a time
       saved_feedrate = feedrate;
+      saved_feedmultiply = feedmultiply;
+      feedmultiply = 100;
+      
       for(int i=0; i < NUM_AXIS; i++) {
         destination[i] = current_position[i];
       }
@@ -637,6 +644,7 @@ inline void process_commands()
         }
       }       
       feedrate = saved_feedrate;
+      feedmultiply = saved_feedmultiply;
       previous_millis_cmd = millis();
       break;
     case 90: // G90
@@ -764,9 +772,34 @@ inline void process_commands()
 				sprintf(time,"%i min, %i sec",min,sec);
 				Serial.println(time);
 				LCD_MESSAGE(time);
-		}
-				break;
+                }
+                                break;
 #endif //SDSUPPORT
+      case 42: //M42 -Change pin status via gcode
+        if (code_seen('S'))
+        {
+          int pin_status = code_value();
+          if (code_seen('P') && pin_status >= 0 && pin_status <= 255)
+          {
+            int pin_number = code_value();
+            for(int i = 0; i < (int)sizeof(sensitive_pins); i++)
+            {
+              if (sensitive_pins[i] == pin_number)
+              {
+                pin_number = -1;
+                break;
+              }
+            }
+            
+            if (pin_number > -1)
+            {              
+              pinMode(pin_number, OUTPUT);
+              digitalWrite(pin_number, pin_status);
+              analogWrite(pin_number, pin_status);
+            }
+          }
+        }
+        break;
       case 104: // M104
                 if (code_seen('S')) target_raw[TEMPSENSOR_HOTEND] = temp2analog(code_value());
 #ifdef PIDTEMP
@@ -789,7 +822,7 @@ inline void process_commands()
                 tt = analog2temp(current_raw[TEMPSENSOR_HOTEND]);
         #endif
         #if TEMP_1_PIN > -1
-                bt = analog2tempBed(current_raw[]);
+                bt = analog2tempBed(current_raw[TEMPSENSOR_BED]);
         #endif
         #if (TEMP_0_PIN > -1) || defined (HEATER_USES_AD595)
             Serial.print("ok T:");
@@ -815,32 +848,54 @@ inline void process_commands()
         #endif
         return;
         //break;
-      case 109: // M109 - Wait for extruder heater to reach target.
-        LCD_MESSAGE("Heating...");
+      case 109: {// M109 - Wait for extruder heater to reach target.
+            LCD_MESSAGE("Heating...");
                if (code_seen('S')) target_raw[TEMPSENSOR_HOTEND] = temp2analog(code_value());
-#ifdef PIDTEMP
-               pid_setpoint = code_value();
-#endif //PIDTEM
-        #ifdef WATCHPERIOD
+            #ifdef PIDTEMP
+            pid_setpoint = code_value();
+            #endif //PIDTEM
+            #ifdef WATCHPERIOD
           if(target_raw[TEMPSENSOR_HOTEND]>current_raw[TEMPSENSOR_HOTEND]){
               watchmillis = max(1,millis());
               watch_raw[TEMPSENSOR_HOTEND] = current_raw[TEMPSENSOR_HOTEND];
-          }else{
+            } else {
               watchmillis = 0;
-          }
-        #endif
-          codenum = millis(); 
-          starttime=millis();
-          while(current_raw[TEMPSENSOR_HOTEND] < target_raw[TEMPSENSOR_HOTEND]) {
-            if( (millis() - codenum) > 1000 ) { //Print Temp Reading every 1 second while heating up.
-              Serial.print("T:");
-              Serial.println( analog2temp(current_raw[TEMPSENSOR_HOTEND]) ); 
-              codenum = millis();
             }
-            LCD_STATUS;
-            manage_heater();
+            #endif //WATCHPERIOD
+            codenum = millis(); 
+     
+               /* See if we are heating up or cooling down */
+              bool target_direction = (current_raw[0] < target_raw[0]); // true if heating, false if cooling
+
+            #ifdef TEMP_RESIDENCY_TIME
+            long residencyStart;
+            residencyStart = -1;
+            /* continue to loop until we have reached the target temp   
+              _and_ until TEMP_RESIDENCY_TIME hasn't passed since we reached it */
+            while((target_direction ? (current_raw[0] < target_raw[0]) : (current_raw[0] > target_raw[0])) ||
+                    (residencyStart > -1 && (millis() - residencyStart) < TEMP_RESIDENCY_TIME*1000) ) {
+            #else
+            while ( target_direction ? (current_raw[0] < target_raw[0]) : (current_raw[0] > target_raw[0]) ) {
+            #endif //TEMP_RESIDENCY_TIME
+              if( (millis() - codenum) > 1000 ) { //Print Temp Reading every 1 second while heating up/cooling down
+                Serial.print("T:");
+              Serial.println( analog2temp(current_raw[TEMPSENSOR_HOTEND]) ); 
+                codenum = millis();
+              }
+              manage_heater();
+              LCD_STATUS;
+              #ifdef TEMP_RESIDENCY_TIME
+               /* start/restart the TEMP_RESIDENCY_TIME timer whenever we reach target temp for the first time
+                  or when current temp falls outside the hysteresis after target temp was reached */
+              if ((residencyStart == -1 &&  target_direction && current_raw[0] >= target_raw[0]) ||
+                  (residencyStart == -1 && !target_direction && current_raw[0] <= target_raw[0]) ||
+                  (residencyStart > -1 && labs(analog2temp(current_raw[0]) - analog2temp(target_raw[0])) > TEMP_HYSTERESIS) ) {
+                residencyStart = millis();
+              }
+              #endif //TEMP_RESIDENCY_TIME
+            }
+            LCD_MESSAGE("Marlin ready.");
           }
-          LCD_MESSAGE("UltiMarlin ready.");
           break;
       case 190: // M190 - Wait bed for heater to reach target.
       #if TEMP_1_PIN > -1
@@ -879,6 +934,14 @@ inline void process_commands()
       case 107: //M107 Fan Off
         WRITE(FAN_PIN,LOW);
         analogWrite(FAN_PIN, 0);
+        break;
+#endif
+#if (PS_ON_PIN > -1)
+      case 80: // M80 - ATX Power On
+        SET_OUTPUT(PS_ON_PIN); //GND
+        break;
+      case 81: // M81 - ATX Power Off
+        SET_INPUT(PS_ON_PIN); //Floating
         break;
 #endif
     case 82:
@@ -1131,25 +1194,31 @@ void wd_reset() {
 inline void kill()
 {
   #if TEMP_0_PIN > -1
-  target_raw[TEMPSENSOR_HOTEND]=0;
-  if(HEATER_0_PIN > -1) digitalWrite(HEATER_0_PIN,LOW);
-#endif
-  #if TEMP_1_PIN > -1
-  target_raw[TEMPSENSOR_BED]=0;
-  if(HEATER_1_PIN > -1) digitalWrite(HEATER_1_PIN,LOW);
-#endif
-  #if TEMP_2_PIN > -1
-  target_raw[TEMPSENSOR_AUX]=0;
-  
+  target_raw[0]=0;
+   #if HEATER_0_PIN > -1  
+     WRITE(HEATER_0_PIN,LOW);
+   #endif
   #endif
-  
+  #if TEMP_1_PIN > -1
+  target_raw[1]=0;
+  #if HEATER_1_PIN > -1 
+    WRITE(HEATER_1_PIN,LOW);
+  #endif
+  #endif
+  #if TEMP_2_PIN > -1
+  target_raw[2]=0;
+  #if HEATER_2_PIN > -1  
+    WRITE(HEATER_2_PIN,LOW);
+  #endif
+  #endif
   disable_x();
   disable_y();
   disable_z();
   disable_e();
   
   if(PS_ON_PIN > -1) pinMode(PS_ON_PIN,INPUT);
-  
+  Serial.println("!! Printer halted. kill() called!!");
+  while(1); // Wait for reset
 }
 
 void manage_inactivity(byte debug) { 
@@ -1162,62 +1231,3 @@ void manage_inactivity(byte debug) {
   }
   check_axes_activity();
 }
-
-/*
-ISR(INT0_vect)                   {Serial.println("INT0_vect");}
-ISR(INT1_vect)                   {Serial.println("INT1_vect");}
-ISR(INT2_vect)                   {Serial.println("INT2_vect");}
-ISR(INT3_vect)                   {Serial.println("INT3_vect");}
-ISR(INT4_vect)                   {Serial.println("INT4_vect");}
-ISR(INT5_vect)                   {Serial.println("INT5_vect");}
-ISR(INT6_vect)                   {Serial.println("INT6_vect");}
-ISR(INT7_vect)                   {Serial.println("INT7_vect");}
-ISR(PCINT0_vect)                 {Serial.println("PCINT0_vect");}
-ISR(PCINT1_vect)                 {Serial.println("PCINT1_vect");}
-ISR(PCINT2_vect)                 {Serial.println("PCINT2_vect");}
-ISR(WDT_vect)                    {Serial.println("WDT_vect");}
-ISR(TIMER2_COMPA_vect)           {Serial.println("TIMER2_COMPA_vect");}
-ISR(TIMER2_COMPB_vect)           {Serial.println("TIMER2_COMPB_vect");}
-ISR(TIMER2_OVF_vect)             {Serial.println("TIMER2_OVF_vect");}
-ISR(TIMER1_CAPT_vect)            {Serial.println("TIMER1_CAPT_vect");}
-//ISR(TIMER1_COMPA_vect)           {Serial.println("TIMER1_COMPA_vect");}
-ISR(TIMER1_COMPB_vect)           {Serial.println("TIMER1_COMPB_vect");}
-ISR(TIMER1_COMPC_vect)           {Serial.println("TIMER1_COMPC_vect");}
-ISR(TIMER1_OVF_vect)             {Serial.println("TIMER1_OVF_vect");}
-ISR(TIMER0_COMPA_vect)           {Serial.println("TIMER0_COMPA_vect");}
-//ISR(TIMER0_COMPB_vect)           {Serial.println("TIMER0_COMPB_vect");}
-//ISR(TIMER0_OVF_vect)             {Serial.println("TIMER0_OVF_vect");}
-//ISR(SPI_STC_vect)                {Serial.println("SPI_STC_vect");}
-//ISR(USART0_RX_vect)              {Serial.println("USART0_RX_vect");}
-ISR(USART0_UDRE_vect)            {Serial.println("USART0_UDRE_vect");}
-ISR(USART0_TX_vect)              {Serial.println("USART0_TX_vect");}
-ISR(ANALOG_COMP_vect)            {Serial.println("ANALOG_COMP_vect");}
-ISR(ADC_vect)                    {Serial.println("ADC_vect");}
-ISR(EE_READY_vect)               {Serial.println("EE_READY_vect");}
-ISR(TIMER3_CAPT_vect)            {Serial.println("TIMER3_CAPT_vect");}
-ISR(TIMER3_COMPA_vect)           {Serial.println("TIMER3_COMPA_vect");}
-ISR(TIMER3_COMPB_vect)           {Serial.println("TIMER3_COMPB_vect");}
-ISR(TIMER3_COMPC_vect)           {Serial.println("TIMER3_COMPC_vect");}
-ISR(TIMER3_OVF_vect)             {Serial.println("TIMER3_OVF_vect");}
-//ISR(USART1_RX_vect)              {Serial.println("USART1_RX_vect");}
-ISR(USART1_UDRE_vect)            {Serial.println("USART1_UDRE_vect");}
-ISR(USART1_TX_vect)              {Serial.println("USART1_TX_vect");}
-ISR(TWI_vect)                    {Serial.println("TWI_vect");}
-ISR(SPM_READY_vect)              {Serial.println("SPM_READY_vect");}
-ISR(TIMER4_CAPT_vect)            {Serial.println("TIMER4_CAPT_vect");}
-ISR(TIMER4_COMPA_vect)           {Serial.println("TIMER4_COMPA_vect");}
-ISR(TIMER4_COMPB_vect)           {Serial.println("TIMER4_COMPB_vect");}
-ISR(TIMER4_COMPC_vect)           {Serial.println("TIMER4_COMPC_vect");}
-ISR(TIMER4_OVF_vect)             {Serial.println("TIMER4_OVF_vect");}
-ISR(TIMER5_CAPT_vect)            {Serial.println("TIMER5_CAPT_vect");}
-ISR(TIMER5_COMPA_vect)           {Serial.println("TIMER5_COMPA_vect");}
-ISR(TIMER5_COMPB_vect)           {Serial.println("TIMER5_COMPB_vect");}
-ISR(TIMER5_COMPC_vect)           {Serial.println("TIMER5_COMPC_vect");}
-ISR(TIMER5_OVF_vect)             {Serial.println("TIMER5_OVF_vect");}
-//ISR(USART2_RX_vect)              {Serial.println("USART2_RX_vect");}
-ISR(USART2_UDRE_vect)            {Serial.println("USART2_UDRE_vect");}
-ISR(USART2_TX_vect)              {Serial.println("USART2_TX_vect");}
-//ISR(USART3_RX_vect)              {Serial.println("USART3_RX_vect");}
-ISR(USART3_UDRE_vect)            {Serial.println("USART3_UDRE_vect");}
-ISR(USART3_TX_vect)              {Serial.println("USART3_TX_vect");}
-*/

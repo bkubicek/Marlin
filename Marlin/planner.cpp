@@ -1,56 +1,56 @@
 /*
   planner.c - buffers movement commands and manages the acceleration profile plan
   Part of Grbl
- 
+
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
   Grbl is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
- 
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
   Grbl is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
- 
- You should have received a copy of the GNU General Public License
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /* The ring buffer implementation gleaned from the wiring_serial library by David A. Mellis. */
 
 /*  
- Reasoning behind the mathematics in this module (in the key of 'Mathematica'):
- 
- s == speed, a == acceleration, t == time, d == distance
- 
- Basic definitions:
- 
- Speed[s_, a_, t_] := s + (a*t) 
- Travel[s_, a_, t_] := Integrate[Speed[s, a, t], t]
- 
- Distance to reach a specific speed with a constant acceleration:
- 
- Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, d, t]
- d -> (m^2 - s^2)/(2 a) --> estimate_acceleration_distance()
- 
- Speed after a given distance of travel with constant acceleration:
- 
- Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, m, t]
- m -> Sqrt[2 a d + s^2]    
- 
- DestinationSpeed[s_, a_, d_] := Sqrt[2 a d + s^2]
- 
- When to start braking (di) to reach a specified destionation speed (s2) after accelerating
- from initial speed s1 without ever stopping at a plateau:
- 
- Solve[{DestinationSpeed[s1, a, di] == DestinationSpeed[s2, a, d - di]}, di]
- di -> (2 a d - s1^2 + s2^2)/(4 a) --> intersection_distance()
- 
- IntersectionDistance[s1_, s2_, a_, d_] := (2 a d - s1^2 + s2^2)/(4 a)
- */
+  Reasoning behind the mathematics in this module (in the key of 'Mathematica'):
+  
+  s == speed, a == acceleration, t == time, d == distance
 
+  Basic definitions:
+
+    Speed[s_, a_, t_] := s + (a*t) 
+    Travel[s_, a_, t_] := Integrate[Speed[s, a, t], t]
+
+  Distance to reach a specific speed with a constant acceleration:
+
+    Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, d, t]
+      d -> (m^2 - s^2)/(2 a) --> estimate_acceleration_distance()
+
+  Speed after a given distance of travel with constant acceleration:
+
+    Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, m, t]
+      m -> Sqrt[2 a d + s^2]    
+
+    DestinationSpeed[s_, a_, d_] := Sqrt[2 a d + s^2]
+
+  When to start braking (di) to reach a specified destionation speed (s2) after accelerating
+  from initial speed s1 without ever stopping at a plateau:
+
+    Solve[{DestinationSpeed[s1, a, di] == DestinationSpeed[s2, a, d - di]}, di]
+      di -> (2 a d - s1^2 + s2^2)/(4 a) --> intersection_distance()
+
+    IntersectionDistance[s1_, s2_, a_, d_] := (2 a d - s1^2 + s2^2)/(4 a)
+*/
+                                                                                                            
 
 //#include <inttypes.h>
 //#include <math.h>       
@@ -242,13 +242,13 @@ void planner_reverse_pass() {
     block_index = (block_buffer_head - 3) & (BLOCK_BUFFER_SIZE - 1);
     block_t *block[5] = {
       NULL, NULL, NULL, NULL, NULL  };
-  while(block_index != block_buffer_tail) {    
+    while(block_index != block_buffer_tail) { 
       block_index = (block_index-1) & (BLOCK_BUFFER_SIZE -1); 
-    block[2]= block[1];
-    block[1]= block[0];
-    block[0] = &block_buffer[block_index];
-    planner_reverse_pass_kernel(block[0], block[1], block[2]);
-  }
+      block[2]= block[1];
+      block[1]= block[0];
+      block[0] = &block_buffer[block_index];
+      planner_reverse_pass_kernel(block[0], block[1], block[2]);
+    }
     planner_reverse_pass_kernel(NULL, block[0], block[1]);
   }
 }
@@ -380,7 +380,7 @@ void check_axes_activity() {
 // mm. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
 void plan_buffer_line(float x, float y, float z, float e, float feed_rate) {
-    
+
 
   // Calculate the buffer head after we push this byte
   int next_buffer_head = (block_buffer_head + 1) & (BLOCK_BUFFER_SIZE - 1);
@@ -434,11 +434,11 @@ void plan_buffer_line(float x, float y, float z, float e, float feed_rate) {
 
   unsigned long microseconds;
 
-  if (delta_e_mm==0) {
+  if (block->steps_e == 0) {
         if(feed_rate<mintravelfeedrate) feed_rate=mintravelfeedrate;
   }
   else {
-        if(feed_rate<minimumfeedrate) feed_rate=minimumfeedrate;
+    	if(feed_rate<minimumfeedrate) feed_rate=minimumfeedrate;
   } 
 
   microseconds = lround((block->millimeters/feed_rate)*1000000);
@@ -545,7 +545,6 @@ void plan_buffer_line(float x, float y, float z, float e, float feed_rate) {
       block->advance_rate = advance / (float)acc_dist;
     }
   }
-
 #endif // ADVANCE
 
   // compute a preliminary conservative acceleration trapezoid
