@@ -301,13 +301,15 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
   float P = (Ti / (Tc + deadTime)) / processGain; // (processTime + 0.5 * deadTime) / (Tc + deadTime);
   float I = P / Ti;
   float D = P * Td;
-  float A = Tc * Ti / (processTime * (Tc + deadTime)); // aka "alpha" or "CO filter"
-
   // This is due to Marlin scaling up the PID constants by 100
   P *= 100;
   I *= 100;
   D *= 100;
-  A *= 100;
+
+  #ifdef PID_CO_FILTER
+    float A = Tc * Ti / (processTime * (Tc + deadTime)); // aka "alpha" or "CO filter"
+    A *= 100;
+  #endif
 
   Serial.print("echo: Calculated P:");
   Serial.print(P, 9);
@@ -315,8 +317,10 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
   Serial.print(I, 9);
   Serial.print(", D:");
   Serial.print(D, 9);
-  Serial.print(" A:");
-  Serial.print(A);
+  #ifdef PID_CO_FILTER
+    Serial.print(" A:");
+    Serial.print(A);
+  #endif
 
   Serial.println();
 
@@ -325,7 +329,9 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
     Kp = P;
     Ki = I * PID_dT;
     Kd = D / PID_dT;
-    // TODO Add "A"
+    #ifdef PID_CO_FILTER
+      Ka = A;
+    #endif
     Serial.println("echo: Calculated PID settings entered into running state. Please update firmware or store new values into EEPROM.");
   }
   else
@@ -338,8 +344,10 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
     Serial.print(I, 9);
     Serial.print(" D");
     Serial.print(D, 9);
-    Serial.print(" A");
-    Serial.println(A, 9);
+    #ifdef PID_CO_FILTER
+      Serial.print(" A");
+      Serial.println(A, 9);
+    #endif
     Serial.println();
   }
 
