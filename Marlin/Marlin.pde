@@ -126,7 +126,7 @@ volatile int count_direction[NUM_AXIS] = { 1, 1, 1, 1};
 // M204 - Set default acceleration: S normal moves T filament only moves (M204 S3000 T7000) im mm/sec^2  also sets minimum segment time in ms (B20000) to prevent buffer underruns and M20 minimum feedrate
 // M205 -  advanced settings:  minimum travel speed S=while printing T=travel only,  B=minimum segment time X= maximum xy jerk, Z=maximum Z jerk
 // M220 - set speed factor override percentage S:factor in percent
-// M301 - Set PID parameters P I and D
+// M301 - Set PID parameters P I D and C
 // M500 - stores paramters in EEPROM
 // M501 - reads parameters from EEPROM (if you need reset them after you changed them temporarily).  D
 // M502 - reverts to the default "factory settings".  You still need to store them in EEPROM afterwards if you want to.
@@ -1179,9 +1179,11 @@ inline void process_commands()
       if(code_seen('P')) Kp = code_value();
       if(code_seen('I')) Ki = code_value()*PID_dT;
       if(code_seen('D')) Kd = code_value()/PID_dT;
+      if(code_seen('C')) Kd = code_value();
       ECHOLN("Kp "<<_FLOAT(Kp,9));
       ECHOLN("Ki "<<_FLOAT(Ki/PID_dT,9));
       ECHOLN("Kd "<<_FLOAT(Kd*PID_dT,9));
+      ECHOLN("Kc "<<_FLOAT(Kc,9));
 
       temp_iState_min = 0.0;
       if (Ki!=0) {
