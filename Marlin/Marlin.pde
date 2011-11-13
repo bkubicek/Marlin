@@ -1179,9 +1179,9 @@ inline void process_commands()
       if(code_seen('P')) Kp = code_value();
       if(code_seen('I')) Ki = code_value()*PID_dT;
       if(code_seen('D')) Kd = code_value()/PID_dT;
-      ECHOLN("Kp "<<_FLOAT(Kp,2));
-      ECHOLN("Ki "<<_FLOAT(Ki/PID_dT,2));
-      ECHOLN("Kd "<<_FLOAT(Kd*PID_dT,2));
+      ECHOLN("Kp "<<_FLOAT(Kp,9));
+      ECHOLN("Ki "<<_FLOAT(Ki/PID_dT,9));
+      ECHOLN("Kd "<<_FLOAT(Kd*PID_dT,9));
 
       temp_iState_min = 0.0;
       if (Ki!=0) {
