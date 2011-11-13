@@ -302,13 +302,14 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
   float I = P / Ti;
   float D = P * Td;
   // This is due to Marlin scaling up the PID constants by 100
-  P *= 100;
-  I *= 100;
-  D *= 100;
+  // j-c: And for some strange reason that I haven't ascertained yet, it needs another *10 otherwise the heater output is still too low.
+  P *= 100 * 10;
+  I *= 100 * 10;
+  D *= 100 * 10;
 
   #ifdef PID_CO_FILTER
     float A = Tc * Ti / (processTime * (Tc + deadTime)); // aka "alpha" or "CO filter"
-    A *= 100;
+    A *= 100 * 10;
   #endif
 
   Serial.print("echo: Calculated P:");
