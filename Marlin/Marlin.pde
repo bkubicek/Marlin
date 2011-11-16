@@ -47,6 +47,9 @@
 #ifdef SIMPLE_LCD
   #include "Simplelcd.h"
 #endif
+#ifdef PIDTEMP
+  #include "ImcPidTuner.h"
+#endif
 
 char version_string[] = "U0.9.3.3-BK";
 
@@ -127,6 +130,7 @@ volatile int count_direction[NUM_AXIS] = { 1, 1, 1, 1};
 // M205 -  advanced settings:  minimum travel speed S=while printing T=travel only,  B=minimum segment time X= maximum xy jerk, Z=maximum Z jerk
 // M220 - set speed factor override percentage S:factor in percent
 // M301 - Set PID parameters P I D and C
+// M302 - Run calibration routine to find P I D and A values
 // M500 - stores paramters in EEPROM
 // M501 - reads parameters from EEPROM (if you need reset them after you changed them temporarily).  D
 // M502 - reverts to the default "factory settings".  You still need to store them in EEPROM afterwards if you want to.
@@ -204,7 +208,11 @@ unsigned char temp_meas_ready = false;
   double pid_input;
   double pid_output;
   bool pid_reset;
-  float HeaterPower;
+  float HeaterPower = 0;
+  #ifdef PID_CO_FILTER
+    float lastHeaterPower = 0;
+    float deltaHeaterPower;
+  #endif
 #endif //PIDTEMP
 float tt = 0, bt = 0;
 #ifdef WATCHPERIOD
@@ -1180,16 +1188,34 @@ inline void process_commands()
       if(code_seen('I')) Ki = code_value()*PID_dT;
       if(code_seen('D')) Kd = code_value()/PID_dT;
       if(code_seen('C')) Kd = code_value();
+      #ifdef PID_CO_FILTER
+        if(code_seen('A')) Ka = code_value();
+      #endif
       ECHOLN("Kp "<<_FLOAT(Kp,9));
       ECHOLN("Ki "<<_FLOAT(Ki/PID_dT,9));
       ECHOLN("Kd "<<_FLOAT(Kd*PID_dT,9));
       ECHOLN("Kc "<<_FLOAT(Kc,9));
+      #ifdef PID_CO_FILTER
+        ECHOLN("Ka "<<_FLOAT(Ka,9));
+      #endif
 
       temp_iState_min = 0.0;
       if (Ki!=0) {
       temp_iState_max = PID_INTEGRAL_DRIVE_MAX / (Ki/100.0);
       }
       else       temp_iState_max = 1.0e10;
+      break;
+    case 302: // M302
+      if (code_seen('S'))
+      {
+        ImcPidTune(code_value(), false);
+      }
+      else
+      {
+        Serial.println("echo: Please specify a target temperature to use for calibration.");
+        Serial.println("echo: It is recommended that you use your desired printing temprature.");
+        Serial.println("echo: eg: M302 S190");
+      }
       break;
 #endif //PIDTEMP
       case 500: // Store settings in EEPROM
@@ -1470,6 +1496,10 @@ void manage_heater()
   #if (TEMP_0_PIN > -1) || defined (HEATER_USES_MAX66675)
     
     #ifdef PIDTEMP
+    #ifdef PID_CO_FILTER
+      deltaHeaterPower = lastHeaterPower - HeaterPower;
+      lastHeaterPower = HeaterPower;
+    #endif
     HeaterPower=0;
     if (current_raw_average<temp2analog(analog2temp(target_raw)+15)) { // only enable PID if temperature is less than target_temperature+15
       if (Kp>=0) {
@@ -1481,8 +1511,16 @@ void manage_heater()
       iTerm = (Ki * temp_iState)/100.0;
       dTerm = (Kd * (current_raw_average - temp_dState)) / 100.0;
       temp_dState = current_raw_average;
-      pTerm+=Kc*current_block->speed_e; //additional heating if extrusion speed is high
-     
+      pTerm += Kc*current_block->speed_e; //additional heating if extrusion speed is high
+      #ifdef PID_CO_FILTER
+        // Minusing CO filter here since it's easier to omit this step if CO filtering is disabled.
+        pTerm -= Ka * deltaHeaterPower;
+      #endif
+      #ifdef PID_CO_BIAS
+        // Adding CO bias here since it's easier to omit this step if CO bias is disabled.
+        pTerm += error;
+      #endif
+
       HeaterPower= constrain(pTerm + iTerm - dTerm, 0, PID_MAX);      
       }
       else  HeaterPower= constrain(-Kp,0, 255);      // 
