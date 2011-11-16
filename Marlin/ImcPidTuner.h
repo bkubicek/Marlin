@@ -38,7 +38,6 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
   int targetRaw = temp2analog(targetTemp);
   int lastTargetRawCO = IMC_PID_TUNE_CO_START;
   int targetRawCO = IMC_PID_TUNE_CO_START - IMC_PID_TUNE_CO_INTERVAL;
-  targetRawCO = 105; // DEBUG
   int highestTemp = 0;
 
   Serial.print("echo: Discovering what controller output is required to reach ");
@@ -49,7 +48,6 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
   unsigned long lastTempMillis = millis(); // Last time the temperature was printed
   while (highestTemp < targetRaw) // Keep looping till we hit the target temp
   { 
-     break;     // DEBUG 
     targetRawCO += IMC_PID_TUNE_CO_INTERVAL;
     analogWrite(HEATER_0_PIN, targetRawCO); // Turn on heater
     endMillis = millis(); // Potential end time of test
@@ -223,9 +221,12 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
   // The Process time is 63% of the time it takes for the temperature to stabalise.
   // Look backwards through the array of temps to determine when that was.
   float pv63percent = rawAvg * PROCESS_TIME_THRESHOLD;
+  Serial.print("echo: 63% PV: ");
+  Serial.println(pv63percent);
+  
   int runCount = NUM_SAMPLES_TO_STORE; // This is to prevent a runaway loop if the array was not sufficently large.
   float processTime = -1;
-  int currentReading = 0;
+  int currentReading = rawAvg;
   int lastReading;
   while (runCount-- > 0)
   {
@@ -236,7 +237,12 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
     }
     lastReading = currentReading;
     currentReading = tempReadings[arrayIndex][0];
-    if (currentReading < pv63percent)
+    Serial.print("echo: PV: ");
+    Serial.print(currentReading);
+    Serial.print(" ");
+    Serial.println(tempReadings[arrayIndex][1]);
+    Serial.println("ms");
+    if (currentReading <= pv63percent)
     {
       // We've found the 63% point... kinda
       // This processTime will be an aproximate. Due to the way we've arrived here, it'll be earlier than the 63% mark.
