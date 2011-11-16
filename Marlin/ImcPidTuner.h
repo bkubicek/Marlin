@@ -156,10 +156,11 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
     delay(HEATER_CHECK_INTERVAL);
     rawAvg = (rawAvg * (CAL_SMOOTHFACTOR - 1) + analogRead(TEMP_0_PIN)) / CAL_SMOOTHFACTOR;
   }
-  unsigned long deadTime = millis() - startMillis; // In ms
+  unsigned long deadTimeMs = millis() - startMillis; // In ms
+  float deadTime = deadTimeMs / 1000; // convert to seconds
   Serial.print("echo: Process dead time: ");
   Serial.print(deadTime);
-  Serial.println("ms");
+  Serial.println("s");
 
   // Find the Process Time
   highestTemp = rawAvg;
@@ -242,6 +243,7 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
       processTime = tempReadings[arrayIndex][1];
       // Compensate for the above fact...
       processTime += (pv63percent - currentReading) / (lastReading - currentReading) * MS_PER_SAMPLE;
+      processTime /= 1000; // convert to seconds
       break;
     }
   }
@@ -255,8 +257,9 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
 
   Serial.print("echo: Process time: ");
   Serial.print(processTime);
-  Serial.println("ms");
+  Serial.println("s");
   Serial.print("echo: ");
+  /*
   Serial.println((endMillis));
   Serial.print("echo: ");
   Serial.println((startMillis));
@@ -264,7 +267,7 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
   Serial.println((endMillis - startMillis));
   Serial.print("echo: ");
   Serial.println((endMillis - startMillis)  * PROCESS_TIME_THRESHOLD);
-
+  */
   // Process gain
   float processGain = (rawAvg - roomTempRaw) / targetRawCO; // The unit is C/pwmUnit
   Serial.print("echo: Process gain: ");
@@ -332,7 +335,7 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
   {
     Serial.println("echo:");
     Serial.println("echo: WARNING! PID settings were merely computed. To use them, please enter the following command:");
-    Serial.print("echo: M103 P");
+    Serial.print("echo: M301 P");
     Serial.print(P, 9);
     Serial.print(" I");
     Serial.print(I, 9);
