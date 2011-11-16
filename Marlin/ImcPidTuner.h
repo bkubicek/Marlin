@@ -5,8 +5,8 @@
  * http://www.controlguru.com/wp/p89.html
  */
 
-#define IMC_PID_TUNE_CO_START 40
-#define IMC_PID_TUNE_CO_INTERVAL 5
+#define IMC_PID_TUNE_CO_START 55
+#define IMC_PID_TUNE_CO_INTERVAL 10
 #define CHANGE_THRESHOLD 4
 #define PROCESS_TIME_THRESHOLD 0.63
 #define STABLE_MS_REQUIRED 50000
@@ -17,7 +17,7 @@
 
 void ImcPidTune (int targetTemp, boolean setWhenDone)
 {
-  int tempReadings[NUM_SAMPLES_TO_STORE][2] = {
+  unsigned long tempReadings[NUM_SAMPLES_TO_STORE][2] = {
     0        }; // Element 0 - raw temperature, Element 1 time in ms
   analogWrite(HEATER_0_PIN, 0); // Turn off heater
   digitalWrite(FAN_PIN, HIGH); // Turn on fan
@@ -49,9 +49,16 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
   while (highestTemp < targetRaw) // Keep looping till we hit the target temp
   { 
     targetRawCO += IMC_PID_TUNE_CO_INTERVAL;
+    if (targetRawCO > PID_MAX)
+    {
+      // Cannot heat further. Cannot reach desired temp. Aborting...
+      analogWrite(HEATER_0_PIN, 0); // Turn off
+      Serial.println("echo: Heater already at maximum and can't reach desired temperature. Aborting calibration.");
+    }
     analogWrite(HEATER_0_PIN, targetRawCO); // Turn on heater
     endMillis = millis(); // Potential end time of test
-    while ((millis() - startMillis) <= STABLE_MS_REQUIRED) // Spin to temp stabalises
+    //while ((millis() - startMillis) <= STABLE_MS_REQUIRED) // Spin to temp stabilises
+    while ((millis() - endMillis) <= STABLE_MS_REQUIRED) // Spin till temp stabilises
     {
       delay(1000);
 
@@ -64,7 +71,7 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
       }
       else if ((highestTemp - rawAvg) > CHANGE_THRESHOLD)
       {
-        // Temperature hasn't stabalised yet.
+        // Temperature hasn't stabilised yet.
         endMillis = millis(); // reset timer
       }
       else if (rawAvg >= maxRaw)
@@ -86,7 +93,7 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
         Serial.println(highestTemp);
       }
     }
-    Serial.print("echo: Temperature stabalised at: ");
+    Serial.print("echo: Temperature stabilised at: ");
     Serial.print(analog2temp(rawAvg));
     Serial.print(" (CO: ");
     Serial.print(targetRawCO);
@@ -101,7 +108,8 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
   boolean warnedUser = false;
   int lowestTemp = rawAvg;
   startMillis = millis();
-  while ((millis() - startMillis) <= STABLE_MS_REQUIRED) // Spin till temp stabalises before taking baseline readings
+  //while ((millis() - startMillis) <= STABLE_MS_REQUIRED) // Spin till temp stabilises before taking baseline readings
+  while ((millis() - startMillis) <= (STABLE_MS_REQUIRED * 2)) // Spin till temp stabilises at room temp
   {
     delay(5000); // 5 seconds
     rawAvg = (rawAvg * (SMOOTHFACTOR - 1) + analogRead(TEMP_0_PIN)) / SMOOTHFACTOR;
@@ -149,7 +157,8 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
 
   // Find the Process dead time
   startMillis = millis();
-  while ((rawAvg - roomTempRaw) <= (CHANGE_THRESHOLD * 2)) // Keep spinning till temp raw increases past the threshold * 2.
+  //while ((rawAvg - roomTempRaw) <= (CHANGE_THRESHOLD * 2)) // Keep spinning till temp raw increases past the threshold * 2.
+  while ((rawAvg - roomTempRaw) <= (CHANGE_THRESHOLD)) // Keep spinning till temp raw increases past the threshold.
   {
     delay(HEATER_CHECK_INTERVAL);
     rawAvg = (rawAvg * (CAL_SMOOTHFACTOR - 1) + analogRead(TEMP_0_PIN)) / CAL_SMOOTHFACTOR;
@@ -193,7 +202,7 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
     }
     else if ((highestTemp - rawAvg) > CHANGE_THRESHOLD)
     {
-      // Temperature hasn't stabalised yet.
+      // Temperature hasn't stabilised yet.
       endMillis = millis(); // reset timer
     }
     else if (rawAvg >= maxRaw)
@@ -218,7 +227,7 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
   Serial.print("echo: Final temperature: ");
   Serial.println(analog2temp(rawAvg));
 
-  // The Process time is 63% of the time it takes for the temperature to stabalise.
+  // The Process time is 63% of the time it takes for the temperature to stabilise.
   // Look backwards through the array of temps to determine when that was.
   float pv63percent = rawAvg * PROCESS_TIME_THRESHOLD;
   Serial.print("echo: 63% PV: ");
@@ -240,7 +249,7 @@ void ImcPidTune (int targetTemp, boolean setWhenDone)
     Serial.print("echo: PV: ");
     Serial.print(currentReading);
     Serial.print(" ");
-    Serial.println(tempReadings[arrayIndex][1]);
+    Serial.print(tempReadings[arrayIndex][1]);
     Serial.println("ms");
     if (currentReading <= pv63percent)
     {
