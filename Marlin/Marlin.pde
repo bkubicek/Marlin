@@ -1187,7 +1187,7 @@ inline void process_commands()
       if(code_seen('P')) Kp = code_value();
       if(code_seen('I')) Ki = code_value()*PID_dT;
       if(code_seen('D')) Kd = code_value()/PID_dT;
-      if(code_seen('C')) Kd = code_value();
+      if(code_seen('C')) Kc = code_value();
       #ifdef PID_CO_FILTER
         if(code_seen('A')) Ka = code_value();
       #endif
