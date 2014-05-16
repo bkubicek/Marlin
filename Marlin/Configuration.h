@@ -167,6 +167,12 @@ float current_raw_average=0;
   #define PID_CRITIAL_GAIN 3000
   #define PID_SWING_AT_CRITIAL 45 //seconds
   #define PIDIADD 5
+  
+  // Enables controller output filter for PID
+  #define PID_CO_FILTER
+  
+  // Enables the CO bias term (adding the error to the resulting PID output)
+  #define PID_CO_BIAS
 /*
   //PID according to Ziegler-Nichols method
   float Kp = 0.6*PID_CRITIAL_GAIN; 
@@ -178,6 +184,9 @@ float current_raw_average=0;
   float Ki =1.2*Kp/PID_SWING_AT_CRITIAL*PID_dT;  
   float Kd = 0;
   float Kc = 9; //heatingpower=Kc*(e_speed)
+  #ifdef PID_CO_FILTER
+    float Ka = 0;
+  #endif
 #endif // PIDTEMP
 
 // extruder advance constant (s2/mm3)
